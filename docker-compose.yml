@@ -1,15 +1,41 @@
 services:
-  helpdesk:
-    build: .
+  # ---------------------------------------------------------
+  # BANCO DE DADOS DO MICROSSERVIÇO DE USUÁRIOS
+  # ---------------------------------------------------------
+  db-usuarios:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: senha123
+      POSTGRES_DB: usuarios_db
     ports:
-      - "127.0.0.1:8000:8000"   # só acessível pelo próprio computador
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata_usuarios:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d usuarios_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ---------------------------------------------------------
+  # MICROSSERVIÇO DE USUÁRIOS (Porta 8001)
+  # ---------------------------------------------------------
+  ms-usuarios:
+    build: ./ms-usuarios
+    ports:
+      - "127.0.0.1:8001:8001"
     env_file:
       - path: .env
         required: false
     environment:
-      DADOS_EXEMPLO: ${DADOS_EXEMPLO:-1}
-    volumes:
-      - dados:/dados
+      - DATABASE_URL=postgresql://admin:senha123@db-usuarios:5432/usuarios_db
+      - JWT_SEGREDO=super_segredo_usuarios
+      - DADOS_EXEMPLO=1
+    depends_on:
+      db-usuarios:
+        condition: service_healthy
     read_only: true
     tmpfs:
       - /tmp
@@ -18,5 +44,166 @@ services:
     cap_drop:
       - ALL
 
+  # ---------------------------------------------------------
+  # BANCO DE DADOS DO MICROSSERVIÇO DE INVENTÁRIO
+  # ---------------------------------------------------------
+  db-inventario:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: senha123
+      POSTGRES_DB: inventario_db
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - pgdata_inventario:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d inventario_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ---------------------------------------------------------
+  # MICROSSERVIÇO DE INVENTÁRIO (Porta 8002)
+  # ---------------------------------------------------------
+  ms-inventario:
+    build: ./ms-inventario
+    ports:
+      - "127.0.0.1:8002:8002"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DATABASE_URL=postgresql://admin:senha123@db-inventario:5432/inventario_db
+      - JWT_SEGREDO=super_segredo_usuarios
+    depends_on:
+      db-inventario:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # ---------------------------------------------------------
+  # BANCO DE DADOS DO MICROSSERVIÇO DE CHAMADOS
+  # ---------------------------------------------------------
+  db-chamados:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: senha123
+      POSTGRES_DB: chamados_db
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - pgdata_chamados:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d chamados_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ---------------------------------------------------------
+  # MICROSSERVIÇO DE CHAMADOS (Porta 8003)
+  # ---------------------------------------------------------
+  ms-chamados:
+    build: ./ms-chamados
+    ports:
+      - "127.0.0.1:8003:8003"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DATABASE_URL=postgresql://admin:senha123@db-chamados:5432/chamados_db
+      - JWT_SEGREDO=super_segredo_usuarios
+      - USUARIOS_URL=http://ms-usuarios:8001
+      - INVENTARIO_URL=http://ms-inventario:8002
+    depends_on:
+      db-chamados:
+        condition: service_healthy
+      ms-usuarios:
+        condition: service_started
+      ms-inventario:
+        condition: service_started
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      - ms-usuarios
+      - ms-inventario
+      - ms-chamados
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # ---------------------------------------------------------
+  # REDIS (Fila de Eventos)
+  # ---------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # ---------------------------------------------------------
+  # BANCO DE DADOS DO MICROSSERVIÇO DE NOTIFICAÇÕES
+  # ---------------------------------------------------------
+  db-notificacoes:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: senha123
+      POSTGRES_DB: notificacoes_db
+    ports:
+      - "127.0.0.1:5436:5432"
+    volumes:
+      - pgdata_notificacoes:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d notificacoes_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ---------------------------------------------------------
+  # MICROSSERVIÇO DE NOTIFICAÇÕES (Porta 8004)
+  # ---------------------------------------------------------
+  ms-notificacoes:
+    build: ./ms-notificacoes
+    ports:
+      - "127.0.0.1:8004:8004"
+    environment:
+      - DATABASE_URL=postgresql://admin:senha123@db-notificacoes:5432/notificacoes_db
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SEGREDO=super_segredo_usuarios
+    depends_on:
+      db-notificacoes:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
 volumes:
-  dados:
+  pgdata_usuarios:
+  pgdata_inventario:
+  pgdata_chamados:
+  pgdata_notificacoes:
+  redis_data:
