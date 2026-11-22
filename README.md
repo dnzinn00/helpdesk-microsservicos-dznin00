@@ -71,6 +71,6 @@ pytest -q
 
 ## 📹 Vídeo de Demonstração
 
-https://youtu.be/cQ0H3Vqeu4g
+https://youtu.be/bdiR09vyXZE
 
 O vídeo mostra a arquitetura, o fluxo completo de um chamado, a segurança entre serviços e a falha de um serviço (simulando a queda do Inventário).
