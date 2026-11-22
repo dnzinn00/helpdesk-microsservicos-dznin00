@@ -124,7 +124,7 @@ async function carregar() {
     avisos
       .slice()
       .reverse()
-      .slice(0, 6)
+      .slice(0, 20) // <-- MUDANÇA AQUI: mostra até 20 notificações em vez de 6
       .map(
         (a) =>
           `<div class="aviso"><b>${esc(a.tipo)}</b><br>${esc(a.mensagem)}<small>${esc(fmt(a.criada_em))}</small></div>`,

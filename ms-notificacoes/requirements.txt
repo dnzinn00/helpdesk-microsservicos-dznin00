@@ -2,5 +2,7 @@ fastapi
 uvicorn
 psycopg[binary]
 redis
+pyjwt
 pydantic
 sqlalchemy
+python-multipart
