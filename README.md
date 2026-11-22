@@ -69,7 +69,8 @@ bruno@empresa.com | Solicitante | Helpdesk2026
 O projeto mantém os testes de segurança originais adaptados para cada serviço:
 pytest -q
 
-Vídeo de Demonstração
-[]
+## 📹 Vídeo de Demonstração
+
+https://youtu.be/cQ0H3Vqeu4g
 
 O vídeo mostra a arquitetura, o fluxo completo de um chamado, a segurança entre serviços e a falha de um serviço (simulando a queda do Inventário).
